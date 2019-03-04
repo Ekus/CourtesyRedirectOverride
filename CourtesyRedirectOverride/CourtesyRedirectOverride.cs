@@ -44,11 +44,19 @@ namespace CourtesyRedirectOverride
             var pathAndQuery = HttpContext.Current.Request.Url.PathAndQuery.Split('?');
             var path = pathAndQuery[0];
             var query = pathAndQuery.Length > 1 ? pathAndQuery[1] : null;
+            var physicalAppPath = HttpContext.Current.Server.MapPath(path);
 
-            if (path.Equals(HttpContext.Current.Request.ApplicationPath, StringComparison.OrdinalIgnoreCase))
+            if (
+                !path.EndsWith("/")
+                    &&
+                    (
+                        path.Equals(HttpContext.Current.Request.ApplicationPath, StringComparison.OrdinalIgnoreCase)
+                        || isSubfolder(physicalAppPath)
+                    )
+                )
             {
                 HttpContext.Current.Response.AddHeader("X-Test", "CourtesyRedirectOverride by .net module");
-                HttpContext.Current.Response.Redirect(HttpContext.Current.Request.ApplicationPath + "/"
+                HttpContext.Current.Response.Redirect(path + "/"
                     + (query != null ? "?" + query : "") // also carry the querystring if any
                     );  // handle the redirection ourselves (will use relative path in HTTP response), so that we avoid letting IIS do it (since it uses absolute path with server name in the response, which breaks load balancers)
             }
@@ -66,6 +74,10 @@ namespace CourtesyRedirectOverride
 
         }
 
+        private bool isSubfolder(string filePath)
+        {
+            return System.IO.Directory.Exists(filePath);
+        }
         #endregion
     }
 }
